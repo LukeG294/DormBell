@@ -1,0 +1,12 @@
+name = "dorm-doorbell"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+kv_namespaces = [
+  { binding = "KV", id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" }
+]
+
+[vars]
+OWNER_NAME = "Luke"
+HOURLY_CAP = "20"
+TAGS = "{\"REPLACE_WITH_A_RANDOM_TOKEN\":\"Door\"}"
