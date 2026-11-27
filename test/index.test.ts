@@ -1,3 +1,4 @@
+import { renderPage } from "../src/page";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker, { type Env, sanitizeName } from "../src/index";
 
@@ -114,7 +115,7 @@ describe("POST /r/:token/ring", () => {
 
     const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     const content: string = payload.content;
-    const visitorName = content.match(/\*\*(.*)\*\*/)![1];
+    const visitorName = content.match(/\u{1F514} (.*) is at your door/u)![1];
     expect(visitorName).not.toContain("@");
     expect(visitorName).not.toContain("*");
     expect(visitorName).not.toContain("<");
@@ -126,20 +127,20 @@ describe("POST /r/:token/ring", () => {
     const longName = "x".repeat(60);
     await worker.fetch(ringRequest(TOKEN, { name: longName }), env);
     let payload = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    const usedName = payload.content.match(/\*\*(.*)\*\*/)![1];
+    const usedName = payload.content.match(/\u{1F514} (.*) is at your door/u)![1];
     expect(usedName.length).toBeLessThanOrEqual(40);
 
     fetchMock.mockClear();
     const env2 = makeEnv();
     await worker.fetch(ringRequest(TOKEN, { name: "" }), env2);
     payload = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(payload.content).toContain("**Someone**");
+    expect(payload.content).toContain("\u{1F514} Someone is at your door");
 
     fetchMock.mockClear();
     const env3 = makeEnv();
     await worker.fetch(ringRequest(TOKEN, { name: 42 }), env3);
     payload = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(payload.content).toContain("**Someone**");
+    expect(payload.content).toContain("\u{1F514} Someone is at your door");
   });
 
   it("returns 429 and skips Discord on a second ring within 60 seconds", async () => {
@@ -228,5 +229,69 @@ describe("sanitizeName", () => {
 
   it("collapses whitespace and trims", () => {
     expect(sanitizeName("  Maya   G  ")).toBe("Maya G");
+  });
+});
+
+describe("visitor page", () => {
+  const html = renderPage("Luke");
+
+  it("is headed Ring the bell", () => {
+    expect(html).toContain("<h1>Ring the bell</h1>");
+    expect(html).not.toContain("know you're here");
+  });
+
+  it("asks for the name in its own field, not a browser pop-up", () => {
+    expect(html).not.toContain("prompt(");
+    expect(html).toContain('<label for="visitor-name">');
+    expect(html).toMatch(/<input id="visitor-name"[^>]*maxlength="40"/);
+  });
+});
+
+describe("asking for the name", () => {
+  // Runs the page's own script against a minimal stand-in for the browser.
+  async function visit(saved: Map<string, string>, typed = "") {
+    const field = { hidden: true };
+    const input = { value: "", blur() {} };
+    let submit = (_event: { preventDefault(): void }) => {};
+    const sent: string[] = [];
+    const elements: Record<string, unknown> = {
+      "name-field": field,
+      "visitor-name": input,
+      "ring-form": { addEventListener: (_type: string, listener: typeof submit) => (submit = listener) },
+      "ring-button": { disabled: false },
+      status: { textContent: "" },
+    };
+    const script = renderPage("Luke").split("<script>")[1].split("</script>")[0];
+    new Function("document", "localStorage", "location", "fetch", "setTimeout", script)(
+      { getElementById: (id: string) => elements[id] },
+      {
+        getItem: (key: string) => saved.get(key) ?? null,
+        setItem: (key: string, value: string) => saved.set(key, value),
+      },
+      { pathname: "/r/token" },
+      async (_url: string, init: { body: string }) => {
+        sent.push(JSON.parse(init.body).name);
+        return new Response(JSON.stringify({ ok: true }));
+      },
+      () => 0,
+    );
+    const asked = !field.hidden;
+    if (asked) input.value = typed;
+    submit({ preventDefault() {} });
+    return { asked, sent: sent[0], hiddenAfter: field.hidden };
+  }
+
+  it("asks on the first visit only, and sends the saved name afterwards", async () => {
+    const saved = new Map<string, string>();
+
+    expect(await visit(saved, " Maya ")).toEqual({ asked: true, sent: "Maya", hiddenAfter: true });
+    expect(await visit(saved)).toEqual({ asked: false, sent: "Maya", hiddenAfter: true });
+  });
+
+  it("does not ask again someone who left it blank", async () => {
+    const saved = new Map<string, string>();
+    await visit(saved, "");
+
+    expect(await visit(saved)).toEqual({ asked: false, sent: "", hiddenAfter: true });
   });
 });

@@ -2,6 +2,8 @@
 
 A tap-to-notify doorbell: a visitor taps an NFC tag (or scans a QR code), types an optional name, and you get a Discord ping saying who is at the door. No app for the visitor, no accounts, no admin dashboard — see [SPEC.md](SPEC.md) for the full brief.
 
+Open source under the [MIT license](LICENSE) — fork it, point it at your own Cloudflare account and Discord server, and it's yours.
+
 ## Prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (the free tier is enough).
@@ -110,3 +112,7 @@ Tests mock the Discord `fetch` call and use an in-memory KV store, so running th
 - The hourly counter increment is a plain KV read-then-write (not atomic). Workers KV doesn't offer atomic counters, and a doorbell's traffic is low and casual enough that a rare race under-counting by one ring is an acceptable trade-off for staying dependency-free.
 - The Content-Security-Policy omits `style-src`/`script-src` hashes and uses `'unsafe-inline'` instead, since the page's inline `<style>` and `<script>` are static and authored by the Worker itself, not visitor input.
 - A missing `DISCORD_WEBHOOK` or `DISCORD_USER_ID` secret at runtime returns a generic 500 and logs only the variable's name, never attempting to send a malformed ping.
+
+## License
+
+[MIT](LICENSE) — do whatever you want with it, no warranty.

@@ -34,7 +34,7 @@ There are three flows: the happy path, the repeat ring, and the bad link.
 **Happy path**
 
 1. The visitor taps the NFC tag, or scans the QR code printed beside it. The phone opens `https://<worker-domain>/r/<token>`.
-2. The page shows a large button, "Let \<OwnerName> know you're here", and an optional name field.
+2. The page shows the heading "Ring the bell" and a large bell button, plus an optional name field before their first ring.
 3. The visitor presses the button. The page sends `POST /r/<token>/ring` with the name.
 4. The Worker validates the token and checks the cooldown, then posts to Discord.
 5. The page shows "\<OwnerName> has been notified. Hang tight!"
@@ -99,7 +99,7 @@ The label in parentheses is the tag's label from `TAGS`. `allowed_mentions` must
 The visitor page is one self-contained HTML string returned by the Worker, with inline CSS and JavaScript and no third-party requests.
 
 - **Layout:** mobile first, one centered column, the button at least 56 px tall. Light and dark themes through `prefers-color-scheme`.
-- **Content:** a heading with the owner's first name (`OWNER_NAME`), an optional name field (max 40 characters, `autocomplete="name"`), and the ring button. No room number, no last name, no building name.
+- **Content:** the heading "Ring the bell", an optional name field (max 40 characters, `autocomplete="given-name"`) shown until the first ring, after which the answer is kept in `localStorage`, and the ring button. No room number, no last name, no building name.
 - **States:** idle, sending (button disabled, label "Ringing..."), success ("\<OwnerName> has been notified. Hang tight!"), cooldown ("Already rang, hang tight!", button disabled for 60 seconds), cap or upstream error ("Couldn't reach \<OwnerName> right now. Try texting instead."), and network error (same message as upstream).
 - **Behavior:** the page calls `fetch(location.pathname + '/ring', { method: 'POST' })` with a JSON body. Prevent double submits while a request is in flight.
 - **Headers:** `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`, and a `<meta name="robots" content="noindex">` tag. Add a strict `Content-Security-Policy` that allows only inline script and style for this page and `connect-src 'self'`.

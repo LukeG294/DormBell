@@ -131,7 +131,7 @@ async function handleRing(token: string, request: Request, env: Env): Promise<Re
 
   const payload = {
     username: "Doorbell",
-    content: `<@${env.DISCORD_USER_ID}> \u{1F514} **${name}** is at your door (${label})`,
+    content: `<@${env.DISCORD_USER_ID}> \u{1F514} ${name} is at your door (${label})`,
     allowed_mentions: { users: [env.DISCORD_USER_ID] },
   };
 
